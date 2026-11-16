@@ -33,7 +33,7 @@ class PlainPaperTest(unittest.TestCase):
         page = PageParser()
         page.feed((Path(__file__).resolve().parents[1] / 'index.html').read_text())
         self.assertEqual(''.join(page.paper_text), '', 'Paper must contain no preprinted text')
-        self.assertEqual(page.header_titles, ['Tuk Tuk'])
+        self.assertEqual(page.header_titles, ['Tuck Tuck'])
 
 
 if __name__ == '__main__':
