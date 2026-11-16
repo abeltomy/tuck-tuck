@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tuck Tuck Typewriter</title>
+<meta name="description" content="A typewriter for your browser. Clacking keys, a margin bell, a moving carriage, and your page as a .txt or .md file.">
+<meta property="og:title" content="Tuck Tuck Typewriter">
+<meta property="og:description" content="A typewriter for your browser. Clacking keys, a margin bell, a moving carriage, and your page as a .txt or .md file.">
+<meta name="theme-color" content="#1a1411">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='27' fill='%23171514' stroke='%23cfd4d0' stroke-width='6'/%3E%3Ctext x='32' y='43' font-family='Georgia,serif' font-size='30' text-anchor='middle' fill='%23f0e9d9'%3ET%3C/text%3E%3C/svg%3E">
+<style>
+/* Fonts live in ./fonts so the page works offline and calls no third party. */
+@font-face{font-family:"Cutive Mono";font-style:normal;font-weight:400;font-display:swap;src:url("fonts/cutive-mono-latin-400-normal.woff2") format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:"Cutive Mono";font-style:normal;font-weight:400;font-display:swap;src:url("fonts/cutive-mono-latin-ext-400-normal.woff2") format("woff2");unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:"Jost";font-style:normal;font-weight:100 900;font-display:swap;src:url("fonts/jost-latin-wght-normal.woff2") format("woff2-variations");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+
+:root{
+  /* Layout: one screen. A lamp-lit desk at night, the machine anchored at the
+     bottom, the page rising out of it. The typing point stays in the middle
+     and the carriage moves, as on a manual typewriter. Everything on the
+     machine is sized from one unit, --k (the diameter of a key). */
+  --desk:#1a1411;
+  --desk-lit:#4a3628;
+  --enamel:#8fb5a4;
+  --enamel-deep:#55796b;
+  --enamel-hi:#cbe2d6;
+  --paper:#f4f0e6;
+  --ink:#27242b;
+  --ribbon-red:#b3261e;
+  --legend:#f0e9d9;
+  --font-type:"Cutive Mono","Courier Prime","Courier New",Courier,monospace;
+  --font-ui:"Jost","Futura","Century Gothic","Avenir Next","Segoe UI",sans-serif;
+  --k:48px;   /* set by script */
+  --ch:10.8px;/* width of one typed character, set by script */
+  --lh:28px;  /* height of one typed line, set by script */
+  --grain:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' seed='4'/%3E%3CfeColorMatrix values='0 0 0 0 .32 0 0 0 0 .26 0 0 0 0 .16 0 0 0 .1 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  color-scheme:dark;
+}
+
+*,*::before,*::after{box-sizing:border-box}
+html,body{height:100%;margin:0;overflow:hidden;background:var(--desk);color:var(--legend);font-family:var(--font-ui);-webkit-text-size-adjust:100%}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--enamel-hi);outline-offset:2px}
+.sr{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+
+/* ---------- the room ---------- */
+.stage{position:fixed;left:0;top:0;width:100%;height:100%;overflow:hidden;user-select:none;-webkit-user-select:none;touch-action:none;
+  background:radial-gradient(70% 62% at 50% 0%,rgba(255,206,150,.17),transparent 72%),linear-gradient(#2b2019,var(--desk) 72%)}
+.desk{position:absolute;left:0;right:0;bottom:0;height:calc(var(--k)*2.3);background:linear-gradient(var(--desk-lit),#2b1f18 55%,#1c1410);box-shadow:inset 0 1px 0 rgba(255,220,180,.2)}
+
+/* ---------- toolbar ---------- */
+.bar{position:absolute;left:0;right:0;top:0;z-index:20;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 16px;padding:10px 16px 20px;background:linear-gradient(rgba(22,17,14,.97) 58%,rgba(22,17,14,0));touch-action:manipulation}
+.cluster{display:flex;align-items:center;gap:8px}
+.btn{height:32px;padding:0 13px;border:1px solid rgba(240,233,217,.28);border-radius:16px;background:rgba(240,233,217,.07);font:500 14px/1 var(--font-ui);white-space:nowrap;cursor:pointer}
+.btn:hover{background:rgba(240,233,217,.16)}
+.btn:active{transform:translateY(1px)}
+.btn.solid{background:var(--legend);border-color:var(--legend);color:#221a15}
+.btn.solid:hover{background:#fff}
+.switch{display:inline-flex;align-items:center;gap:9px;height:32px;padding:0 2px;border:0;border-radius:16px;background:none;font:500 14px/1 var(--font-ui);cursor:pointer}
+.switch i{position:relative;flex:none;width:38px;height:22px;border-radius:11px;background:rgba(240,233,217,.16);border:1px solid rgba(240,233,217,.32);transition:background .15s}
+.switch i::after{content:"";position:absolute;left:2px;top:2px;width:16px;height:16px;border-radius:50%;background:var(--legend);transition:transform .15s}
+.switch[aria-checked="true"] i{background:var(--enamel-deep);border-color:var(--enamel)}
+.switch[aria-checked="true"] i::after{transform:translateX(16px)}
+.vol{width:92px;height:32px;margin:0;accent-color:var(--enamel);cursor:pointer}
+.vol:disabled{opacity:.4;cursor:default}
+.hint,.count{margin:0;font:400 13px/1 var(--font-ui);color:rgba(240,233,217,.64)}
+.count{font-variant-numeric:tabular-nums}
+.ask{position:absolute;right:16px;top:calc(100% - 10px);width:min(300px,calc(100% - 32px));padding:14px 14px 12px;border-radius:12px;background:#2c211a;border:1px solid rgba(240,233,217,.26);box-shadow:0 14px 34px rgba(0,0,0,.55)}
+.ask p{margin:0 0 12px;font:400 14px/1.45 var(--font-ui)}
+.ask div{display:flex;gap:8px}
+.toast{position:absolute;left:50%;top:62px;z-index:19;max-width:calc(100% - 32px);padding:8px 14px;border-radius:16px;background:var(--legend);color:#221a15;font:500 14px/1.3 var(--font-ui);text-align:center;opacity:0;transform:translate(-50%,-6px);transition:opacity .18s,transform .18s;pointer-events:none}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+[hidden]{display:none!important}
+
+/* ---------- the rig: carriage + machine ---------- */
+.rig{position:absolute;left:50%;bottom:calc(var(--k)*.5 + env(safe-area-inset-bottom,0px));width:calc(var(--k)*16);height:calc(var(--k)*9);margin-left:calc(var(--k)*-8)}
+.rig::after{content:"";position:absolute;left:-5%;right:-5%;bottom:calc(var(--k)*-.34);height:calc(var(--k)*.9);background:radial-gradient(50% 50% at 50% 50%,rgba(0,0,0,.62),transparent 70%)}
+
+/* The carriage's origin is the paper's left edge (x) and the foot of the line being typed (y). */
+.carriage{position:absolute;left:50%;top:-6px;width:0;height:0;z-index:1;font:400 clamp(15px,calc(var(--k)*.35),19px)/1.55 var(--font-type);transition:transform 70ms cubic-bezier(.2,.7,.3,1);will-change:transform}
+.rail{position:absolute;left:calc(var(--k)*-1.25);width:calc(70ch + var(--k)*2.5);top:calc(var(--k)*-1.32);height:calc(var(--k)*.8);border-radius:calc(var(--k)*.22);background:linear-gradient(var(--enamel-hi),var(--enamel) 34%,var(--enamel-deep));box-shadow:inset 0 1px 0 rgba(255,255,255,.6),0 2px 5px rgba(0,0,0,.45)}
+.platen{position:absolute;left:calc(var(--k)*-1);width:calc(70ch + var(--k)*2);top:calc(var(--k)*-.95);height:calc(var(--k)*1.5);border-radius:calc(var(--k)*.1);background:linear-gradient(#0e0d0d,#3d3a38 16%,#5b5754 27%,#33302f 46%,#151413 78%,#0b0b0b)}
+.platen::before,.platen::after{content:"";position:absolute;top:7%;bottom:7%;width:calc(var(--k)*.3);background:linear-gradient(#6f7672,#f3f5f3 22%,#aab0ac 45%,#5b615d 80%,#3c403d)}
+.platen::before{left:calc(var(--k)*-.3);border-radius:3px 0 0 3px}
+.platen::after{right:calc(var(--k)*-.3);border-radius:0 3px 3px 0}
+.knob{position:absolute;top:calc(var(--k)*-1.06);width:calc(var(--k)*.62);height:calc(var(--k)*1.72);border-radius:calc(var(--k)*.14);
+  background:linear-gradient(rgba(255,255,255,0),rgba(255,255,255,.16) 24%,rgba(255,255,255,0) 48%,rgba(0,0,0,.45)),repeating-linear-gradient(#0c0b0b 0 3px,#2e2b2a 3px 6px)}
+.knob.l{left:calc(var(--k)*-1.92)}
+.knob.r{left:calc(70ch + var(--k)*1.3)}
+.lever{position:absolute;left:calc(var(--k)*-3.3);top:calc(var(--k)*-1.8);width:calc(var(--k)*2.2);height:calc(var(--k)*.95);padding:0;border:0;border-radius:calc(var(--k)*.3);background:none;cursor:pointer;transform-origin:94% 70%;transform:rotate(-13deg);transition:transform .11s ease-out}
+.lever::before{content:"";position:absolute;left:16%;right:0;top:44%;height:calc(var(--k)*.17);border-radius:99px;background:linear-gradient(#fbfcfb,#aeb4b0 50%,#6b716d);box-shadow:0 2px 3px rgba(0,0,0,.5)}
+.lever::after{content:"";position:absolute;left:0;top:19%;width:calc(var(--k)*.64);height:calc(var(--k)*.64);border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff,#b9beba 45%,#6f7571);box-shadow:0 3px 4px rgba(0,0,0,.5)}
+.lever.pull{transform:rotate(9deg)}
+
+/* The paper is anchored by its foot, so it grows upward as lines are added. */
+.roll{position:absolute;left:0;bottom:calc(var(--k)*-.55);width:70ch;transition:transform .2s cubic-bezier(.2,.7,.3,1)}
+.roll.held{transition:none}
+.paper{position:relative;padding:0 4ch calc(var(--k)*.55) 6ch;border-radius:2px 2px 0 0;background-color:var(--paper);background-image:var(--grain),linear-gradient(90deg,rgba(60,40,20,.07),transparent 3%,transparent 97%,rgba(60,40,20,.08));box-shadow:0 0 0 1px rgba(60,40,20,.14),0 -2px 16px rgba(0,0,0,.38);color:var(--ink);cursor:text}
+.paper::after{content:"";position:absolute;left:0;right:0;bottom:0;height:calc(var(--lh)*2 + var(--k)*.55);background:linear-gradient(transparent,rgba(40,30,20,.12) 55%,rgba(20,14,10,.5));pointer-events:none}
+.letterhead{padding-top:1.6em;max-width:min(56ch,calc(50vw - 24px));font-family:var(--font-ui)}
+.letterhead .name{margin:0;font:600 1.28em/1.1 var(--font-ui);letter-spacing:.05em;color:#3f6a5b}
+.letterhead .note{margin:.4em 0 0;font:400 .8em/1.4 var(--font-ui);color:#5b786d;white-space:normal}
+.touch-only{display:none}
+@media (pointer:coarse){.touch-only{display:block}}
+.lines{padding-top:calc(1.55em + var(--head,0px));white-space:pre}
+.line{height:1.55em}
+.probe{position:absolute;visibility:hidden;white-space:pre}
+.c{display:inline-block;width:1ch;text-align:center;transform:translateY(var(--y,0px)) rotate(var(--r,0deg));text-shadow:0 0 .5px var(--ink),0 0 1.4px rgba(39,36,43,.35)}
+.c.fresh{animation:ink .5s ease-out}
+@keyframes ink{0%{color:#0a090d;text-shadow:0 0 1.2px #000,0 0 3px rgba(10,9,13,.85)}}
+
+/* ---------- the machine ---------- */
+.machine{position:absolute;inset:0;z-index:2;border-radius:calc(var(--k)*.85) calc(var(--k)*.85) calc(var(--k)*.5) calc(var(--k)*.5);
+  background:linear-gradient(var(--enamel-hi) 0,var(--enamel) 6%,#86ac9b 52%,var(--enamel-deep) 100%);
+  box-shadow:inset 0 2px 1px rgba(255,255,255,.55),inset 0 calc(var(--k)*-.14) calc(var(--k)*.3) rgba(20,45,36,.45),inset calc(var(--k)*.12) 0 calc(var(--k)*.2) rgba(255,255,255,.12),inset calc(var(--k)*-.12) 0 calc(var(--k)*.2) rgba(0,0,0,.14),0 calc(var(--k)*.3) calc(var(--k)*.5) rgba(0,0,0,.55)}
+.scale{position:absolute;left:50%;top:-5px;z-index:1;width:calc(var(--ch)*31);height:8px;margin-left:calc(var(--ch)*-15.5);border:1px solid rgba(255,255,255,.5);border-radius:2px;pointer-events:none;
+  background:repeating-linear-gradient(90deg,rgba(255,255,255,.8) 0 1px,transparent 1px var(--ch)),linear-gradient(rgba(220,230,225,.5),rgba(150,170,160,.38))}
+.deck{position:absolute;left:0;top:0;z-index:2;width:100%;height:calc(var(--k)*2.7);overflow:visible;pointer-events:none}
+.guide{position:absolute;left:50%;top:calc(-9px - var(--lh));z-index:3;width:calc(var(--ch) + 7px);height:calc(var(--lh) + 12px);margin-left:calc(var(--ch)/-2 - 3.5px);pointer-events:none}
+.guide::before,.guide::after{content:"";position:absolute;top:34%;bottom:0;width:3px;border-radius:2px 2px 0 0;background:linear-gradient(90deg,#fafbfa,#8d938f);box-shadow:0 1px 2px rgba(0,0,0,.4)}
+.guide::before{left:0}
+.guide::after{right:0}
+.guide i{position:absolute;left:-9px;right:-9px;bottom:0;height:7px;border-radius:2px;background:linear-gradient(#f6f8f6,#8d938f);box-shadow:0 1px 2px rgba(0,0,0,.5)}
+
+.arm{stroke:#aab1ac;stroke-width:3;stroke-linecap:round}
+.slug{stroke:#e4e8e4;stroke-width:9}
+.wordmark{font:600 44px var(--font-ui);letter-spacing:1.5px}
+.spool{transform-box:fill-box;transform-origin:center;transition:transform .22s ease-out}
+.bell{transform-box:fill-box;transform-origin:center}
+
+.well{position:absolute;left:calc(var(--k)*.55);right:calc(var(--k)*.55);top:calc(var(--k)*2.7);bottom:calc(var(--k)*.42);padding:calc(var(--k)*.36) calc(var(--k)*.48);border-radius:calc(var(--k)*.55);background:linear-gradient(#0f1513,#1c2622);box-shadow:inset 0 calc(var(--k)*.1) calc(var(--k)*.2) rgba(0,0,0,.8),0 1px 0 rgba(255,255,255,.4)}
+.row{display:flex;gap:calc(var(--k)*.15);margin-bottom:calc(var(--k)*.14)}
+.row.r2{padding-left:calc(var(--k)*.575)}
+.row.r3{padding-left:calc(var(--k)*.8625)}
+.key{position:relative;flex:none;display:grid;place-items:center;width:var(--k);height:var(--k);padding:0;border:calc(var(--k)*.07) solid transparent;border-radius:50%;
+  background:radial-gradient(circle at 50% 34%,#34302e,#1a1817 58%,#0b0a0a) padding-box,linear-gradient(160deg,#fff,#9da39f 40%,#565b58 62%,#dfe3df) border-box;
+  box-shadow:0 calc(var(--k)*.1) 0 #050505,0 calc(var(--k)*.17) calc(var(--k)*.12) rgba(0,0,0,.65);
+  color:var(--legend);font:500 calc(var(--k)*.4)/1 var(--font-ui);cursor:pointer;touch-action:none;-webkit-tap-highlight-color:transparent;transition:transform 45ms ease-out,box-shadow 45ms ease-out}
+.key::after{content:"";position:absolute;left:14%;right:14%;top:6%;height:38%;border-radius:50%;background:linear-gradient(rgba(255,255,255,.22),rgba(255,255,255,0));pointer-events:none}
+.key.down{transform:translateY(calc(var(--k)*.09));box-shadow:0 calc(var(--k)*.01) 0 #050505,0 calc(var(--k)*.04) calc(var(--k)*.05) rgba(0,0,0,.6)}
+.key.dual{grid-template-rows:1fr 1fr;padding:calc(var(--k)*.11) 0 calc(var(--k)*.09);font-size:calc(var(--k)*.3)}
+.key.dual .hi{font-size:.86em;opacity:.62}
+.shifted .key.dual .hi{opacity:1}
+.shifted .key.dual .lo{opacity:.55}
+.key.wide,.key.shift{border-radius:calc(var(--k)*.5);font-size:calc(var(--k)*.25);letter-spacing:.02em}
+.key.wide{flex:1}
+.key.wide::after,.key.shift::after{left:6%;right:6%;border-radius:calc(var(--k)*.4)}
+.key.space::after{display:none}
+.key.shift{width:calc(var(--k)*1.29)}
+.key.shift:last-child{flex:1}
+.key.on{color:#ffd9ad;background:radial-gradient(circle at 50% 34%,#5a4636,#2a211b 58%,#120e0b) padding-box,linear-gradient(160deg,#fff,#9da39f 40%,#565b58 62%,#dfe3df) border-box}
+.key.space{display:block;width:calc(var(--k)*7.6);height:calc(var(--k)*.6);margin:0 auto;border:0;border-radius:calc(var(--k)*.3);background:linear-gradient(#45403d,#211e1d 42%,#0c0b0b);box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 calc(var(--k)*.1) 0 #050505,0 calc(var(--k)*.17) calc(var(--k)*.12) rgba(0,0,0,.65)}
+.key.space.down{box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 calc(var(--k)*.01) 0 #050505,0 calc(var(--k)*.04) calc(var(--k)*.05) rgba(0,0,0,.6)}
+
+.capture{position:absolute;left:50%;top:30%;width:2px;height:2px;padding:0;border:0;opacity:0;resize:none;font-size:16px;caret-color:transparent;pointer-events:none}
+
+@media (max-width:660px){
+  .bar{gap:6px 10px;padding:8px 12px 16px}
+  .count{display:none}
+  .vol{width:68px}
+  .btn{padding:0 10px}
+}
+@media (prefers-reduced-motion:reduce){
+  .carriage,.roll,.key,.lever,.spool,.toast,.switch i,.switch i::after{transition:none}
+  .c.fresh{animation:none}
+}
+</style>
+</head>
+<body>
+<main class="stage" id="stage">
+  <h1 class="sr">Tuck Tuck Typewriter</h1>
+  <div class="desk"></div>
+
+  <header class="bar" id="bar">
+    <div class="cluster">
+      <button class="switch" id="sound" type="button" role="switch" aria-checked="true"><i></i>Key sounds</button>
+      <input class="vol" id="volume" type="range" min="0" max="100" step="5" value="70" aria-label="Key sound volume">
+    </div>
+    <p class="count" id="count">0 words</p>
+    <div class="cluster">
+      <span class="hint" id="dlHint">Download</span>
+      <button class="btn" id="saveTxt" type="button" aria-label="Download as plain text, .txt">.txt</button>
+      <button class="btn" id="saveMd" type="button" aria-label="Download as Markdown, .md">.md</button>
+      <button class="btn" id="copy" type="button">Copy text</button>
+      <button class="btn" id="fresh" type="button" aria-expanded="false" aria-controls="ask">New sheet</button>
+    </div>
+    <div class="ask" id="ask" role="alertdialog" aria-labelledby="askText" hidden>
+      <p id="askText">Start a new sheet? This clears everything you typed.</p>
+      <div>
+        <button class="btn solid" id="askYes" type="button">New sheet</button>
+        <button class="btn" id="askNo" type="button">Keep typing</button>
+      </div>
+    </div>
+  </header>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <div class="rig" id="rig">
+    <div class="carriage" id="carriage">
+      <div class="rail"></div>
+      <div class="platen"></div>
+      <div class="knob l"></div>
+      <div class="knob r"></div>
+      <button class="lever" id="lever" type="button" tabindex="-1" aria-label="Carriage return"></button>
+      <div class="roll" id="roll">
+        <div class="paper" id="paper">
+          <div class="letterhead">
+            <p class="name">Tuck Tuck</p>
+            <p class="note">Type anything. The bell rings when a line is nearly full, then the carriage returns by itself.</p>
+            <p class="note touch-only">Tap the paper to use your own keyboard. Drag it to read back.</p>
+          </div>
+          <div class="lines" id="lines" aria-hidden="true"><span class="probe" id="probe">0000000000</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="machine" id="machine">
+      <div class="scale"></div>
+      <svg class="deck" viewBox="0 0 1600 270" aria-hidden="true">
+        <defs>
+          <linearGradient id="chrome" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f7f9f7"/><stop offset=".5" stop-color="#9aa19d"/><stop offset="1" stop-color="#e1e5e1"/></linearGradient>
+          <radialGradient id="steel" cx=".38" cy=".3" r=".9"><stop offset="0" stop-color="#eef1ee"/><stop offset=".55" stop-color="#a3aaa5"/><stop offset="1" stop-color="#666d68"/></radialGradient>
+          <radialGradient id="pit" cx=".5" cy="0" r="1"><stop offset="0" stop-color="#1f2623"/><stop offset="1" stop-color="#090b0a"/></radialGradient>
+        </defs>
+
+        <text class="wordmark" x="92" y="145.5" fill="rgba(255,255,255,.5)">tuck tuck</text>
+        <text class="wordmark" x="92" y="144" fill="#3d6456">tuck tuck</text>
+
+        <path d="M588 0V22A212 212 0 0 0 1012 22V0Z" fill="url(#pit)"/>
+        <path d="M588 24A212 212 0 0 0 1012 24" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="2.5"/>
+        <path d="M604.4 67.6A200 200 0 0 0 995.6 67.6" fill="none" stroke="#2b2826" stroke-width="12" stroke-linecap="round"/>
+
+        <path id="ribbonRed" fill="none" stroke="#b3261e" stroke-width="8" stroke-linejoin="round"/>
+        <path id="ribbonBlack" fill="none" stroke="#121113" stroke-width="9" stroke-linejoin="round"/>
+        <g id="vibrator"><rect x="745" y="-15" width="7" height="32" rx="2" fill="url(#chrome)"/><rect x="848" y="-15" width="7" height="32" rx="2" fill="url(#chrome)"/></g>
+        <circle cx="572" cy="14" r="9" fill="url(#steel)" stroke="#59605b" stroke-width="1.5"/>
+        <circle cx="1028" cy="14" r="9" fill="url(#steel)" stroke="#59605b" stroke-width="1.5"/>
+
+        <circle cx="400" cy="135" r="83" fill="rgba(0,0,0,.3)"/>
+        <g class="spool" id="spoolL">
+          <circle cx="400" cy="128" r="80" fill="url(#steel)" stroke="#f3f5f3" stroke-width="2.5"/>
+          <circle cx="400" cy="128" r="47" fill="none" stroke="#0e0d0d" stroke-width="38" stroke-dasharray="70 28.43"/>
+          <circle cx="400" cy="128" r="17" fill="url(#chrome)" stroke="#5d635f" stroke-width="1.5"/>
+          <path d="M391 128h18" stroke="#454a47" stroke-width="3.5" stroke-linecap="round"/>
+        </g>
+        <circle cx="1200" cy="135" r="83" fill="rgba(0,0,0,.3)"/>
+        <g class="spool" id="spoolR">
+          <circle cx="1200" cy="128" r="80" fill="url(#steel)" stroke="#f3f5f3" stroke-width="2.5"/>
+          <circle cx="1200" cy="128" r="47" fill="none" stroke="#0e0d0d" stroke-width="38" stroke-dasharray="70 28.43"/>
+          <circle cx="1200" cy="128" r="17" fill="url(#chrome)" stroke="#5d635f" stroke-width="1.5"/>
+          <path d="M1191 128h18" stroke="#454a47" stroke-width="3.5" stroke-linecap="round"/>
+        </g>
+
+        <circle cx="1424" cy="134" r="40" fill="rgba(0,0,0,.28)"/>
+        <g class="bell" id="bell">
+          <circle cx="1424" cy="128" r="38" fill="url(#steel)" stroke="#f3f5f3" stroke-width="2"/>
+          <circle cx="1424" cy="128" r="25" fill="none" stroke="rgba(255,255,255,.55)" stroke-width="1.5"/>
+          <circle cx="1424" cy="128" r="7" fill="#5d635f"/>
+        </g>
+
+        <path d="M734.6 35.2A66 66 0 0 0 865.4 35.2" fill="none" stroke="url(#chrome)" stroke-width="18"/>
+        <path d="M734.6 35.2A66 66 0 0 0 865.4 35.2" fill="none" stroke="#1b1b1b" stroke-width="18" stroke-dasharray="1.6 2.9"/>
+        <g id="bars"></g>
+      </svg>
+      <div class="guide"><i></i></div>
+      <div class="well" id="well" aria-hidden="true"></div>
+    </div>
+  </div>
+
+  <textarea class="capture" id="capture" aria-label="Typewriter page. Type here." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="enter"></textarea>
+  <div class="sr" id="mirror" aria-label="What you have typed"></div>
+</main>
+
+<script>
+(() => {
+'use strict';
+
+/* ---------- settings ---------- */
+const BELL = 48;    // column where the bell rings; the next space returns the carriage
+const HARD = 60;    // last column; a word that runs this far is carried over
+const MARGIN = 6;   // left margin, in characters
+const NAME = 'tuck-tuck';
+
+const $ = id => document.getElementById(id);
+const root = document.documentElement;
+const stage = $('stage'), bar = $('bar'), rig = $('rig'), carriage = $('carriage'), roll = $('roll');
+const paper = $('paper'), linesEl = $('lines'), probe = $('probe'), machine = $('machine'), well = $('well');
+const lever = $('lever'), capture = $('capture'), mirror = $('mirror'), toastEl = $('toast');
+const calm = matchMedia('(prefers-reduced-motion: reduce)');
+const desktop = matchMedia('(hover: hover) and (pointer: fine)');
+const isMac = /Mac|iPhone|iPad/.test(navigator.platform || '');
+
+const store = {
+  get(key, fallback) { try { const v = localStorage.getItem(NAME + '.' + key); return v === null ? fallback : v; } catch { return fallback; } },
+  set(key, value) { try { localStorage.setItem(NAME + '.' + key, value); } catch { /* private mode: carry on without saving */ } },
+};
+
+/* ---------- sound: everything is synthesised, there are no audio files ---------- */
+const Sound = (() => {
+  let ctx = null, out = null, noise = null;
+  let muted = store.get('muted', '0') === '1';
+  let volume = Math.min(1, Math.max(0, Number(store.get('volume', '70')) / 100));
+  const rnd = (a, b) => a + Math.random() * (b - a);
+
+  function ready() {
+    if (muted || volume === 0) return false;
+    try {
+      if (!ctx) {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return false;
+        ctx = new AC({ latencyHint: 'interactive' });
+        const squash = ctx.createDynamicsCompressor();
+        squash.threshold.value = -14; squash.knee.value = 8; squash.ratio.value = 5;
+        squash.attack.value = 0.002; squash.release.value = 0.12;
+        out = ctx.createGain(); out.gain.value = volume;
+        out.connect(squash); squash.connect(ctx.destination);
+        noise = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
+        const d = noise.getChannelData(0);
+        for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      }
+      if (ctx.state !== 'running') ctx.resume().catch(() => {});
+      return true;
+    } catch { return false; }
+  }
+
+  // A burst of filtered noise: the click, clack and rattle of metal parts.
+  function hit(t, { type = 'bandpass', f = 2000, q = 1, g = 0.5, a = 0.001, d = 0.04 }) {
+    const src = ctx.createBufferSource(); src.buffer = noise;
+    const filter = ctx.createBiquadFilter(); filter.type = type; filter.frequency.value = f; filter.Q.value = q;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.exponentialRampToValueAtTime(g, t + a);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + a + d);
+    src.connect(filter); filter.connect(gain); gain.connect(out);
+    src.start(t, Math.random() * 0.8, a + d + 0.03);
+  }
+  // A falling pitch: the thump that travels through the frame, or a bell partial.
+  function tone(t, { type = 'sine', f0 = 160, f1 = 60, g = 0.5, a = 0.001, d = 0.06 }) {
+    const osc = ctx.createOscillator(); osc.type = type;
+    osc.frequency.setValueAtTime(f0, t);
+    osc.frequency.exponentialRampToValueAtTime(Math.max(1, f1), t + a + d);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.exponentialRampToValueAtTime(g, t + a);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + a + d);
+    osc.connect(gain); gain.connect(out);
+    osc.start(t); osc.stop(t + a + d + 0.03);
+  }
+  const play = fn => () => { if (ready()) fn(ctx.currentTime + 0.002); };
+
+  return {
+    wake: () => { ready(); },
+    get muted() { return muted; },
+    get volume() { return volume; },
+    setMuted(m) { muted = m; store.set('muted', m ? '1' : '0'); },
+    setVolume(v) { volume = v; store.set('volume', String(Math.round(v * 100))); if (out) out.gain.setTargetAtTime(v, ctx.currentTime, 0.01); },
+
+    key: play(t => {
+      const v = rnd(0.85, 1.1), p = rnd(0.9, 1.12);   // no two strikes are alike
+      hit(t, { type: 'highpass', f: 3800 * p, q: 0.7, g: 0.3 * v, d: 0.01 });     // slug snaps the ribbon
+      hit(t, { f: 1500 * p, q: 1.2, g: 1.0 * v, d: 0.035 });                      // the "tuck"
+      hit(t + 0.003, { f: 520 * p, q: 1.6, g: 0.7 * v, d: 0.055 });               // knock on the platen
+      tone(t, { f0: 180 * p, f1: 65, g: 0.6 * v, d: 0.06 });                      // thump in the frame
+      hit(t + 0.055, { f: 2600, q: 1, g: 0.09 * v, d: 0.02 });                    // typebar falling back
+    }),
+    space: play(t => {
+      hit(t, { f: 520, q: 1.1, g: 0.75, d: 0.06 });
+      tone(t, { f0: 120, f1: 55, g: 0.6, d: 0.08 });
+      hit(t, { type: 'highpass', f: 3000, g: 0.16, d: 0.01 });
+    }),
+    back: play(t => {
+      hit(t, { f: 1100, q: 1.5, g: 0.45, d: 0.03 });
+      tone(t, { f0: 150, f1: 80, g: 0.25, d: 0.04 });
+      hit(t + 0.05, { f: 2400, g: 0.1, d: 0.015 });
+    }),
+    thud: play(t => {
+      hit(t, { f: 300, q: 1, g: 0.5, d: 0.06 });
+      tone(t, { f0: 100, f1: 50, g: 0.4, d: 0.07 });
+    }),
+    bell: play(t => {
+      const f = 2093;
+      hit(t, { type: 'highpass', f: 5000, g: 0.2, d: 0.01 });                     // the striker
+      tone(t, { f0: f, f1: f, g: 0.42, d: 1.5 });
+      tone(t, { f0: f * 2.76, f1: f * 2.76, g: 0.2, d: 0.9 });
+      tone(t, { f0: f * 5.4, f1: f * 5.4, g: 0.08, d: 0.45 });
+    }),
+    carriageReturn: play(t => {
+      const clicks = 11;
+      for (let i = 0; i < clicks; i++) {                                           // line-feed ratchet
+        const tt = t + 0.015 + 0.2 * Math.pow(i / clicks, 0.85);
+        hit(tt, { type: 'highpass', f: 3000, q: 0.8, g: 0.17, d: 0.008 });
+        hit(tt, { f: 900, q: 3, g: 0.1, d: 0.012 });
+      }
+      hit(t, { f: 420, q: 0.8, g: 0.22, a: 0.06, d: 0.2 });                       // carriage rolling
+      const stop = t + 0.25;                                                       // and stopping
+      hit(stop, { f: 520, q: 1.2, g: 0.8, d: 0.07 });
+      tone(stop, { f0: 130, f1: 48, g: 0.8, d: 0.11 });
+      hit(stop, { type: 'highpass', f: 3500, g: 0.25, d: 0.012 });
+    }),
+    pull: play(t => {
+      hit(t, { f: 2400, q: 0.6, g: 0.3, a: 0.06, d: 0.26 });
+      hit(t, { f: 700, q: 0.7, g: 0.18, a: 0.06, d: 0.26 });
+    }),
+    feed: play(t => {
+      for (let i = 0; i < 7; i++) hit(t + i * 0.035, { type: 'highpass', f: 2800, q: 0.8, g: 0.18, d: 0.009 });
+    }),
+  };
+})();
+
+/* ---------- keyboard on the machine ---------- */
+const letters = s => [...s].map(c => ['Key' + c, c.toLowerCase(), c]);
+const ROWS = [
+  [['Digit1', '1', '!'], ['Digit2', '2', '@'], ['Digit3', '3', '#'], ['Digit4', '4', '$'], ['Digit5', '5', '%'], ['Digit6', '6', '^'],
+   ['Digit7', '7', '&'], ['Digit8', '8', '*'], ['Digit9', '9', '('], ['Digit0', '0', ')'], ['Minus', '-', '_'], ['Equal', '=', '+']],
+  [...letters('QWERTYUIOP'), ['Backspace', 'Back space']],
+  [...letters('ASDFGHJKL'), ['Quote', "'", '"'], ['Enter', 'Return']],
+  [['ShiftLeft', 'Shift'], ...letters('ZXCVBNM'), ['Comma', ',', ';'], ['Period', '.', ':'], ['Slash', '/', '?'], ['ShiftRight', 'Shift']],
+];
+const keyEls = new Map();   // key code -> element
+const byCode = new Map();   // key code -> {lo, hi, el, bar}
+const byChar = new Map();   // character -> same entry
+const charKeys = [];
+
+ROWS.forEach((row, r) => {
+  const rowEl = document.createElement('div');
+  rowEl.className = 'row r' + (r + 1);
+  for (const [code, lo, hi] of row) {
+    const el = document.createElement('button');
+    el.type = 'button'; el.tabIndex = -1; el.className = 'key'; el.dataset.code = code;
+    if (hi === undefined) {
+      el.classList.add(code.startsWith('Shift') ? 'shift' : 'wide');
+      el.textContent = lo;
+    } else {
+      if (code.startsWith('Key')) el.textContent = hi;
+      else {
+        el.classList.add('dual');
+        for (const [cls, ch] of [['hi', hi], ['lo', lo]]) {
+          const s = document.createElement('span'); s.className = cls; s.textContent = ch; el.append(s);
+        }
+      }
+      const entry = { lo, hi, el, bar: 0 };
+      charKeys.push(entry); byCode.set(code, entry); byChar.set(lo, entry); byChar.set(hi, entry);
+    }
+    keyEls.set(code, el);
+    rowEl.append(el);
+  }
+  well.append(rowEl);
+});
+const spaceEl = document.createElement('button');
+spaceEl.type = 'button'; spaceEl.tabIndex = -1; spaceEl.className = 'key space'; spaceEl.dataset.code = 'Space';
+well.append(spaceEl);
+keyEls.set('Space', spaceEl);
+
+/* ---------- typebars, ribbon, spools, bell ---------- */
+const SVG = 'http://www.w3.org/2000/svg';
+const barsG = $('bars'), ribbonBlack = $('ribbonBlack'), ribbonRed = $('ribbonRed'), vibrator = $('vibrator');
+const spoolL = $('spoolL'), spoolR = $('spoolR'), bellEl = $('bell');
+const HUB = [800, 26];        // centre of the typebar fan, in deck units (100 units = 1 key)
+let strikeAt = [800, -38];    // where every slug lands; set in fit()
+let ribbonRest = 0;
+const bars = [];
+const UP = 38, HOLD = 22, DOWN = 130;   // ms
+let ticking = 0, spoolTurn = 0, ribbonTimer = 0;
+
+function buildBars() {
+  // One bar per character key, fanned left to right in the order the keys sit.
+  charKeys.sort((a, b) => (a.el.offsetLeft + a.el.offsetWidth / 2) - (b.el.offsetLeft + b.el.offsetWidth / 2));
+  charKeys.forEach((key, i) => {
+    key.bar = i;
+    const angle = (166 - i * 152 / (charKeys.length - 1)) * Math.PI / 180;
+    const ux = Math.cos(angle), uy = Math.sin(angle);
+    const arm = document.createElementNS(SVG, 'line'); arm.setAttribute('class', 'arm');
+    const slug = document.createElementNS(SVG, 'line'); slug.setAttribute('class', 'slug');
+    if (i % 2) arm.style.stroke = '#8e9590';
+    barsG.append(arm, slug);
+    const b = { pivot: [HUB[0] + 68 * ux, HUB[1] + 68 * uy], rest: [HUB[0] + 196 * ux, HUB[1] + 196 * uy], arm, slug, t0: 0 };
+    bars.push(b);
+    pose(b, 0);
+  });
+}
+function pose(b, e) {   // e: 0 = lying in the basket, 1 = against the paper
+  const tx = b.rest[0] + (strikeAt[0] - b.rest[0]) * e, ty = b.rest[1] + (strikeAt[1] - b.rest[1]) * e;
+  let dx = tx - b.pivot[0], dy = ty - b.pivot[1];
+  const len = Math.hypot(dx, dy) || 1; dx /= len; dy /= len;
+  const head = Math.min(22, len);
+  b.arm.setAttribute('x1', b.pivot[0]); b.arm.setAttribute('y1', b.pivot[1]);
+  b.arm.setAttribute('x2', tx); b.arm.setAttribute('y2', ty);
+  b.slug.setAttribute('x1', tx - dx * head); b.slug.setAttribute('y1', ty - dy * head);
+  b.slug.setAttribute('x2', tx); b.slug.setAttribute('y2', ty);
+}
+function tick(now) {
+  let live = false;
+  for (const b of bars) {
+    if (!b.t0) continue;
+    const t = now - b.t0;
+    let e;
+    if (t < UP) e = (t / UP) ** 2;
+    else if (t < UP + HOLD) e = 1;
+    else if (t < UP + HOLD + DOWN) e = (1 - (t - UP - HOLD) / DOWN) ** 2;
+    else { e = 0; b.t0 = 0; }
+    pose(b, e);
+    if (b.t0) live = true;
+  }
+  ticking = live ? requestAnimationFrame(tick) : 0;
+}
+function setRibbon(y) {
+  ribbonBlack.setAttribute('d', `M400 128L572 14L748 ${y}L852 ${y}L1028 14L1200 128`);
+  ribbonRed.setAttribute('d', `M400 136L572 22L748 ${y + 8}L852 ${y + 8}L1028 22L1200 136`);
+  vibrator.setAttribute('transform', `translate(0 ${y})`);
+}
+function strike(index) {
+  spoolTurn += 7;
+  spoolL.style.transform = spoolR.style.transform = `rotate(${spoolTurn}deg)`;
+  if (calm.matches) return;
+  const b = bars[index % bars.length];
+  if (b) {
+    barsG.append(b.arm, b.slug);   // bring it to the front
+    b.t0 = performance.now();
+    if (!ticking) ticking = requestAnimationFrame(tick);
+  }
+  setRibbon(strikeAt[1] + 2);
+  clearTimeout(ribbonTimer);
+  ribbonTimer = setTimeout(() => setRibbon(ribbonRest), 80);
+}
+function ringBell() {
+  Sound.bell();
+  if (!calm.matches) bellEl.animate(
+    [{ transform: 'rotate(0)' }, { transform: 'rotate(-9deg) scale(1.08)' }, { transform: 'rotate(7deg) scale(1.05)' }, { transform: 'rotate(-4deg)' }, { transform: 'rotate(0)' }],
+    { duration: 520, easing: 'ease-out' });
+}
+function pullLever() {
+  lever.classList.add('pull');
+  setTimeout(() => lever.classList.remove('pull'), 150);
+}
+
+/* ---------- the page ---------- */
+let text = '';
+let lines = [[0, 0]];              // [start, end) of each typed line within text
+let cursor = { line: 0, col: 0 };
+let drawn = [];                    // what is on the paper now: {start, str, el}
+let CH = 10.8, LH = 28, K = 48;    // px
+let pan = 0, rollY = 0;            // how far the page is dragged away from the typing point
+let head = 0;                      // extra blank paper under the letterhead, px
+
+// Breaks the text into lines the way the machine would: a new line at every
+// Return, at the first space after the bell, and when a word hits the last column.
+function layout(t) {
+  const out = [];
+  let start = 0, col = 0, i = 0;
+  while (i < t.length) {
+    const cp = t.codePointAt(i), n = cp > 0xFFFF ? 2 : 1;
+    if (cp === 10 || (cp === 32 && col >= BELL)) { out.push([start, i]); start = i + 1; col = 0; i++; continue; }
+    if (col >= HARD) { out.push([start, i]); start = i; col = 0; }
+    col++; i += n;
+  }
+  out.push([start, t.length]);
+  out.col = col;
+  return out;
+}
+
+// Each character gets its own slight tilt, drop and ink weight, fixed by its position.
+const scramble = n => { n = Math.imul(n ^ 0x9e3779b9, 0x85ebca6b); n ^= n >>> 13; n = Math.imul(n, 0xc2b2ae35); return (n ^ (n >>> 16)) >>> 0; };
+function glyph(ch, index, fresh) {
+  const el = document.createElement('span');
+  el.textContent = ch;
+  if (ch === ' ') { el.className = 'c'; return el; }
+  const h = scramble(index * 131 + ch.codePointAt(0));
+  el.className = fresh && !calm.matches ? 'c fresh' : 'c';
+  el.style.cssText = `--y:${(((h & 15) - 7.5) * 0.09).toFixed(2)}px;--r:${((((h >> 4) & 15) - 7.5) * 0.11).toFixed(2)}deg;opacity:${(0.74 + ((h >> 8) & 31) / 31 * 0.26).toFixed(2)}`;
+  return el;
+}
+function addGlyphs(el, str, index, freshFrom) {
+  const frag = document.createDocumentFragment();
+  for (const ch of str) { frag.append(glyph(ch, index, index >= freshFrom)); index += ch.length; }
+  el.append(frag);
+}
+function draw(freshFrom) {
+  lines.forEach(([start, end], i) => {
+    const str = text.slice(start, end);
+    let d = drawn[i];
+    if (!d) {
+      const el = document.createElement('div'); el.className = 'line';
+      linesEl.append(el);
+      d = drawn[i] = { start: -1, str: '', el };
+    }
+    if (d.start === start && d.str === str) return;
+    if (d.start === start && str.startsWith(d.str)) addGlyphs(d.el, str.slice(d.str.length), start + d.str.length, freshFrom);
+    else if (d.start === start && d.str.startsWith(str)) { for (const _ of d.str.slice(str.length)) d.el.lastChild.remove(); }
+    else { d.el.textContent = ''; addGlyphs(d.el, str, start, freshFrom); }
+    d.start = start; d.str = str;
+  });
+  while (drawn.length > lines.length) drawn.pop().el.remove();
+}
+
+function place(mode) {   // move the carriage so the cursor column sits at the typing point
+  const still = calm.matches || mode === 'jump';
+  carriage.style.transitionDuration = (still ? 0 : mode === 'return' ? 260 : mode === 'snap' ? 200 : 70) + 'ms';
+  carriage.style.transitionTimingFunction = mode === 'return' ? 'cubic-bezier(.45,0,.2,1)' : 'cubic-bezier(.2,.7,.3,1)';
+  carriage.style.transform = `translate3d(${(pan - (MARGIN + cursor.col + 0.5) * CH).toFixed(2)}px,0,0)`;
+}
+function feed(lineCount) {   // roll the paper up (or back down) by whole lines
+  if (calm.matches || Math.abs(lineCount) > 3) return;
+  paper.animate([{ transform: `translateY(${lineCount * LH}px)` }, { transform: 'translateY(0)' }], { duration: 140, easing: 'ease-out' });
+}
+
+let saveTimer = 0;
+function change(kind, info = {}) {
+  if (pan || rollY) setView(0, 0, true);
+  const before = cursor;
+  lines = layout(text);
+  cursor = { line: lines.length - 1, col: lines.col };
+  draw(kind === 'type' ? info.from : Infinity);
+  const moved = cursor.line - before.line;
+
+  if (kind === 'type') {
+    const space = info.ch === ' ';
+    if (info.ch === '\n' || moved > 0) {
+      Sound.carriageReturn(); pullLever();
+      if (info.ch !== '\n' && !space) { Sound.key(); strike(info.bar); }   // a long word carried over
+    } else {
+      if (space) Sound.space(); else { Sound.key(); strike(info.bar); }
+      if (cursor.col === BELL) ringBell();
+    }
+    place(moved ? 'return' : 'step');
+  } else if (kind === 'back') {
+    Sound.back();
+    place(moved ? 'return' : 'step');
+  } else {
+    place('jump');
+  }
+  if (moved && kind !== 'bulk') feed(moved);
+
+  const words = (text.match(/\S+/g) || []).length;
+  $('count').textContent = words + (words === 1 ? ' word' : ' words');
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => { store.set('text', text); mirror.textContent = text; }, 300);
+}
+
+const clean = s => s.replace(/\r\n?/g, '\n').replace(/\t/g, '    ').replace(/[\u0000-\u0009\u000B-\u001F\u007F​﻿]/g, '');
+const hashBar = ch => (ch.codePointAt(0) * 7) % (bars.length || 1);
+function flash(el) { el.classList.add('down'); setTimeout(() => el.classList.remove('down'), 90); }
+
+function typeChar(ch, code) {
+  const key = (code && byCode.get(code)) || byChar.get(ch);
+  if (!code) { if (ch === ' ') flash(spaceEl); else if (key) flash(key.el); }   // typed from a phone keyboard
+  const from = text.length;
+  text += ch;
+  change('type', { ch, from, bar: key ? key.bar : hashBar(ch) });
+}
+function carriageReturn() {
+  text += '\n';
+  change('type', { ch: '\n', from: text.length });
+}
+function backspace() {
+  if (!text) { Sound.thud(); return; }
+  const last = text.charCodeAt(text.length - 1);
+  text = text.slice(0, last >= 0xDC00 && last <= 0xDFFF && text.length > 1 ? -2 : -1);
+  change('back');
+}
+function typeMany(str) {
+  str = clean(str);
+  if (!str) return;
+  text += str;
+  Sound.key();
+  change('bulk');
+}
+
+/* ---------- dragging the page to read back ---------- */
+function setView(x, y, animate) {
+  const top = bar.getBoundingClientRect().bottom + 12;
+  const lineY = rig.getBoundingClientRect().top - 6;
+  const above = paper.offsetHeight - K * 0.55;
+  rollY = Math.min(Math.max(0, above - (lineY - top)), Math.max(0, y));
+  pan = Math.min((cursor.col + MARGIN) * CH, Math.max(-(HARD - cursor.col) * CH, x));
+  roll.classList.toggle('held', !animate);
+  roll.style.transform = `translate3d(0,${rollY.toFixed(1)}px,0)`;
+  place(animate ? 'snap' : 'jump');
+}
+let drag = null;
+stage.addEventListener('pointerdown', e => {
+  Sound.wake();
+  if (e.target.closest('.bar, .key, .lever')) return;
+  closeAsk();
+  drag = { id: e.pointerId, x: e.clientX, y: e.clientY, pan, rollY, moved: false };
+  try { stage.setPointerCapture(e.pointerId); } catch { /* fine without it */ }
+});
+stage.addEventListener('pointermove', e => {
+  if (!drag || e.pointerId !== drag.id) return;
+  const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+  if (!drag.moved && Math.hypot(dx, dy) < 6) return;
+  drag.moved = true;
+  setView(drag.pan + dx, drag.rollY + dy, false);
+});
+let justDragged = false;
+function endDrag(e) {
+  if (!drag || e.pointerId !== drag.id) return;
+  justDragged = drag.moved;
+  drag = null;
+}
+stage.addEventListener('pointerup', endDrag);
+stage.addEventListener('pointercancel', endDrag);
+stage.addEventListener('click', e => {
+  if (e.target.closest('.bar, .key, .lever')) return;
+  if (!justDragged) capture.focus({ preventScroll: true });   // on a phone this brings up the keyboard
+});
+stage.addEventListener('wheel', e => {
+  if (e.target.closest('.bar')) return;
+  e.preventDefault();
+  setView(pan - (e.shiftKey ? e.deltaY : e.deltaX), rollY - (e.shiftKey ? 0 : e.deltaY), false);
+}, { passive: false });
+
+/* ---------- input: the real keyboard ---------- */
+let shiftHeld = false, shiftLock = false;
+function showShift() {
+  machine.classList.toggle('shifted', shiftHeld || shiftLock);
+  keyEls.get('ShiftLeft').classList.toggle('on', shiftLock);
+  keyEls.get('ShiftRight').classList.toggle('on', shiftLock);
+}
+addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closeAsk(); setView(0, 0, true); capture.focus({ preventScroll: true }); return; }
+  if (e.metaKey || (e.ctrlKey && !e.altKey) || (e.altKey && !e.ctrlKey && !isMac)) return;   // leave shortcuts alone
+  if (e.key === 'Shift') { shiftHeld = true; showShift(); keyEls.get(e.code)?.classList.add('down'); return; }
+  if (e.isComposing || e.keyCode === 229 || e.key === 'Dead' || e.key === 'Process') return;  // the hidden field handles these
+  const el = document.activeElement;
+  const onControl = el && el !== capture && el !== document.body && el.closest('.bar');
+  if (onControl && (e.key === 'Enter' || e.key === ' ' || e.key === 'Tab' || e.key.startsWith('Arrow') || e.key === 'Home' || e.key === 'End')) return;
+  if (!$('ask').hidden) return;
+
+  if (e.key === 'Enter') carriageReturn();
+  else if (e.key === 'Backspace') backspace();
+  else if ([...e.key].length === 1) typeChar(e.key, e.code);
+  else return;
+  e.preventDefault();
+  keyEls.get(e.code)?.classList.add('down');
+  if (onControl) capture.focus({ preventScroll: true });
+});
+addEventListener('keyup', e => {
+  keyEls.get(e.code)?.classList.remove('down');
+  if (e.key === 'Shift') { shiftHeld = e.shiftKey; showShift(); }
+});
+addEventListener('blur', () => {
+  for (const el of keyEls.values()) el.classList.remove('down');
+  shiftHeld = false; showShift();
+});
+
+/* ---------- input: phone keyboards, dead keys and IMEs, through a hidden field ----------
+   The field keeps a short buffer. Whatever changes in it is replayed on the page:
+   removed characters as back spaces, new ones as key strikes. */
+const SEED = '> ';
+let seen = SEED;
+function resetCapture() {
+  capture.value = seen = SEED;
+  try { capture.setSelectionRange(SEED.length, SEED.length); } catch { /* not focused */ }
+}
+resetCapture();
+capture.addEventListener('input', e => {
+  const now = capture.value;
+  let same = 0;
+  const max = Math.min(now.length, seen.length);
+  while (same < max && now[same] === seen[same]) same++;
+  const removed = [...seen.slice(same)].length, added = clean(now.slice(same));
+  seen = now;
+  for (let i = 0; i < removed; i++) backspace();
+  for (const ch of added) ch === '\n' ? (flash(keyEls.get('Enter')), carriageReturn()) : typeChar(ch);
+  if (!e.isComposing && (now.length > 120 || now.length < SEED.length)) resetCapture();
+});
+capture.addEventListener('compositionend', () => {
+  if (capture.value.length > 120 || capture.value.length < SEED.length) resetCapture();
+});
+capture.addEventListener('focus', resetCapture);
+document.addEventListener('paste', e => {
+  if (e.target.closest && e.target.closest('.bar')) return;
+  e.preventDefault();
+  typeMany((e.clipboardData || window.clipboardData).getData('text') || '');
+});
+
+/* ---------- input: the keys on the machine ---------- */
+let repeatTimer = 0;
+function pressKey(code) {
+  if (code === 'ShiftLeft' || code === 'ShiftRight') { shiftLock = !shiftLock; showShift(); return; }
+  if (code === 'Backspace') return backspace();
+  if (code === 'Enter') return carriageReturn();
+  if (code === 'Space') return typeChar(' ', code);
+  const key = byCode.get(code);
+  if (!key) return;
+  typeChar(shiftHeld || shiftLock ? key.hi : key.lo, code);
+  if (shiftLock) { shiftLock = false; showShift(); }
+}
+function release(el) {
+  clearTimeout(repeatTimer); clearInterval(repeatTimer);
+  setTimeout(() => el.classList.remove('down'), 70);
+}
+well.addEventListener('mousedown', e => e.preventDefault());   // keep focus where it is
+well.addEventListener('pointerdown', e => {
+  const el = e.target.closest('.key');
+  if (!el) return;
+  e.preventDefault();
+  try { el.setPointerCapture(e.pointerId); } catch { /* fine without it */ }
+  el.classList.add('down');
+  pressKey(el.dataset.code);
+  if (el.dataset.code === 'Backspace') {
+    clearTimeout(repeatTimer);
+    repeatTimer = setTimeout(() => { repeatTimer = setInterval(backspace, 75); }, 420);
+  }
+});
+for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) {
+  well.addEventListener(type, e => { const el = e.target.closest('.key'); if (el) release(el); });
+}
+lever.addEventListener('mousedown', e => e.preventDefault());
+lever.addEventListener('click', () => carriageReturn());
+
+/* ---------- toolbar ---------- */
+let toastTimer = 0;
+function toast(message) {
+  toastEl.textContent = message;
+  toastEl.style.top = bar.offsetHeight - 6 + 'px';
+  toastEl.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove('show'), 2600);
+}
+
+const soundSwitch = $('sound'), volume = $('volume');
+function showSound() {
+  soundSwitch.setAttribute('aria-checked', String(!Sound.muted));
+  volume.disabled = Sound.muted;
+  volume.value = Math.round(Sound.volume * 100);
+}
+soundSwitch.addEventListener('click', () => {
+  Sound.setMuted(!Sound.muted);
+  showSound();
+  Sound.key();   // lets you hear that it is back on
+});
+volume.addEventListener('input', () => { Sound.setVolume(volume.value / 100); Sound.key(); });
+
+// Markdown joins lines that are one Return apart into a single paragraph. Two trailing
+// spaces keep each line break, except around headings, lists, quotes and the like.
+function toMarkdown(t) {
+  const block = /^\s{0,3}(#{1,6}\s|[-*+]\s|\d+[.)]\s|>|```|~~~|\||(-{3,}|\*{3,}|_{3,})\s*$)/;
+  const rows = t.replace(/[ \t]+$/gm, '').split('\n');
+  return rows.map((row, i) => {
+    const next = rows[i + 1];
+    return !row || !next || block.test(row) || block.test(next) ? row : row + '  ';
+  }).join('\n').replace(/\n*$/, '\n');
+}
+const toPlainText = t => t.replace(/[ \t]+$/gm, '').replace(/\n*$/, '\n');
+
+function saveFile(filename, contents, mime) {
+  const url = URL.createObjectURL(new Blob([contents], { type: mime + ';charset=utf-8' }));
+  const link = Object.assign(document.createElement('a'), { href: url, download: filename });
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+  return Promise.resolve();
+}
+function download(extension) {
+  if (!text.trim()) return toast('Nothing to download yet. Type something first.');
+  const d = new Date(), two = n => String(n).padStart(2, '0');
+  const filename = `${NAME}-${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}-${two(d.getHours())}${two(d.getMinutes())}.${extension}`;
+  const md = extension === 'md';
+  saveFile(filename, md ? toMarkdown(text) : toPlainText(text), md ? 'text/markdown' : 'text/plain')
+    .then(() => toast('Downloaded ' + filename))
+    .catch(() => toast('The download did not go through. Use Copy text instead.'));
+}
+$('saveTxt').addEventListener('click', () => download('txt'));
+$('saveMd').addEventListener('click', () => download('md'));
+
+$('copy').addEventListener('click', async () => {
+  if (!text.trim()) return toast('Nothing to copy yet. Type something first.');
+  try {
+    await navigator.clipboard.writeText(toPlainText(text));
+    toast('Copied the page.');
+  } catch {
+    const box = Object.assign(document.createElement('textarea'), { value: toPlainText(text) });
+    box.style.cssText = 'position:fixed;opacity:0';
+    document.body.append(box); box.select();
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch { /* blocked */ }
+    box.remove();
+    toast(ok ? 'Copied the page.' : 'This browser blocked copying. Download the page instead.');
+  }
+});
+
+const ask = $('ask'), fresh = $('fresh');
+function closeAsk() { ask.hidden = true; fresh.setAttribute('aria-expanded', 'false'); }
+fresh.addEventListener('click', () => {
+  if (!text) return toast('This sheet is already blank.');
+  ask.hidden = !ask.hidden;
+  fresh.setAttribute('aria-expanded', String(!ask.hidden));
+  if (!ask.hidden) $('askNo').focus();
+});
+$('askNo').addEventListener('click', closeAsk);
+$('askYes').addEventListener('click', () => {
+  closeAsk();
+  const swap = () => { text = ''; change('bulk'); store.set('text', ''); Sound.feed(); toast('New sheet in.'); };
+  if (calm.matches) return swap();
+  Sound.pull();
+  roll.animate([{ transform: 'translateY(0)' }, { transform: `translateY(${-stage.clientHeight}px)` }], { duration: 340, easing: 'cubic-bezier(.5,0,.9,.5)' })
+    .finished.then(() => {
+      swap();
+      roll.animate([{ transform: `translateY(${3 * LH}px)` }, { transform: 'translateY(0)' }], { duration: 300, easing: 'cubic-bezier(.2,.7,.3,1)' });
+    });
+});
+// After a mouse click on the toolbar, hand the keyboard back to the page.
+bar.addEventListener('click', e => {
+  if (e.detail > 0 && desktop.matches && e.target.closest('button') && ask.hidden) capture.focus({ preventScroll: true });
+});
+
+/* ---------- sizing ---------- */
+function fit() {
+  const vv = window.visualViewport;
+  const useVV = vv && Math.abs(vv.scale - 1) < 0.01;
+  const w = useVV ? vv.width : innerWidth, h = useVV ? vv.height : innerHeight;
+  stage.style.height = h + 'px';
+  stage.style.top = (useVV ? vv.offsetTop : 0) + 'px';
+  K = Math.max(18, Math.min(62, (w - 16) / 16.2, (h - bar.offsetHeight - 110) / 9.6, h * 0.062));
+  root.style.setProperty('--k', K.toFixed(2) + 'px');
+  CH = probe.getBoundingClientRect().width / 10 || CH;
+  LH = parseFloat(getComputedStyle(carriage).fontSize) * 1.55;
+  root.style.setProperty('--ch', CH.toFixed(3) + 'px');
+  root.style.setProperty('--lh', LH.toFixed(2) + 'px');
+  const unit = 100 / K;                      // deck units per px
+  strikeAt = [800, -(6 + LH / 2) * unit];
+  ribbonRest = -6 * unit + 12;
+  setRibbon(ribbonRest);
+  for (const b of bars) pose(b, 0);
+  // Taller screens start with more blank paper between the letterhead and the first line.
+  const room = rig.getBoundingClientRect().top - 6 - bar.getBoundingClientRect().bottom;
+  const blank = paper.offsetHeight - K * 0.55 - head - (lines.length - 1) * LH;
+  head = Math.round(Math.max(0, Math.min(room * 0.8 - blank, 10 * LH)));
+  root.style.setProperty('--head', head + 'px');
+  setView(0, 0, false);
+}
+
+/* ---------- start ---------- */
+showSound();
+fit();
+buildBars();
+text = clean(store.get('text', ''));
+lines = layout(text);
+cursor = { line: lines.length - 1, col: lines.col };
+change('bulk');
+mirror.textContent = text;
+addEventListener('resize', fit);
+if (window.visualViewport) { visualViewport.addEventListener('resize', fit); visualViewport.addEventListener('scroll', fit); }
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(fit);
+addEventListener('pagehide', () => store.set('text', text));
+if (desktop.matches) capture.focus({ preventScroll: true });
+})();
+</script>
+</body>
+</html>
