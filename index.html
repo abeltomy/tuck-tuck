@@ -52,6 +52,7 @@ button{font:inherit;color:inherit}
 /* ---------- toolbar ---------- */
 .bar{position:absolute;left:0;right:0;top:0;z-index:20;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 16px;padding:10px 16px 20px;background:linear-gradient(rgba(22,17,14,.97) 58%,rgba(22,17,14,0));touch-action:manipulation}
 .cluster{display:flex;align-items:center;gap:8px}
+.brand{margin:0;font:600 18px/1 var(--font-ui);letter-spacing:.04em;white-space:nowrap}
 .btn{height:32px;padding:0 13px;border:1px solid rgba(240,233,217,.28);border-radius:16px;background:rgba(240,233,217,.07);font:500 14px/1 var(--font-ui);white-space:nowrap;cursor:pointer}
 .btn:hover{background:rgba(240,233,217,.16)}
 .btn:active{transform:translateY(1px)}
@@ -98,11 +99,7 @@ button{font:inherit;color:inherit}
 .roll.held{transition:none}
 .paper{position:relative;padding:0 4ch calc(var(--k)*.55) 6ch;border-radius:2px 2px 0 0;background-color:var(--paper);background-image:var(--grain),linear-gradient(90deg,rgba(60,40,20,.07),transparent 3%,transparent 97%,rgba(60,40,20,.08));box-shadow:0 0 0 1px rgba(60,40,20,.14),0 -2px 16px rgba(0,0,0,.38);color:var(--ink);cursor:text}
 .paper::after{content:"";position:absolute;left:0;right:0;bottom:0;height:calc(var(--lh)*2 + var(--k)*.55);background:linear-gradient(transparent,rgba(40,30,20,.12) 55%,rgba(20,14,10,.5));pointer-events:none}
-.letterhead{padding-top:1.6em;max-width:min(56ch,calc(50vw - 24px));font-family:var(--font-ui)}
-.letterhead .name{margin:0;font:600 1.28em/1.1 var(--font-ui);letter-spacing:.05em;color:#3f6a5b}
-.letterhead .note{margin:.4em 0 0;font:400 .8em/1.4 var(--font-ui);color:#5b786d;white-space:normal}
-.touch-only{display:none}
-@media (pointer:coarse){.touch-only{display:block}}
+
 .lines{padding-top:calc(1.55em + var(--head,0px));white-space:pre}
 .line{height:1.55em}
 .probe{position:absolute;visibility:hidden;white-space:pre}
@@ -169,11 +166,12 @@ button{font:inherit;color:inherit}
 </head>
 <body>
 <main class="stage" id="stage">
-  <h1 class="sr">Tuck Tuck Typewriter</h1>
+
   <div class="desk"></div>
 
   <header class="bar" id="bar">
     <div class="cluster">
+      <h1 class="brand">Tuk Tuk</h1>
       <button class="switch" id="sound" type="button" role="switch" aria-checked="true"><i></i>Key sounds</button>
       <input class="vol" id="volume" type="range" min="0" max="100" step="5" value="70" aria-label="Key sound volume">
     </div>
@@ -204,11 +202,7 @@ button{font:inherit;color:inherit}
       <button class="lever" id="lever" type="button" tabindex="-1" aria-label="Carriage return"></button>
       <div class="roll" id="roll">
         <div class="paper" id="paper">
-          <div class="letterhead">
-            <p class="name">Tuck Tuck</p>
-            <p class="note">Type anything. The bell rings when a line is nearly full, then the carriage returns by itself.</p>
-            <p class="note touch-only">Tap the paper to use your own keyboard. Drag it to read back.</p>
-          </div>
+
           <div class="lines" id="lines" aria-hidden="true"><span class="probe" id="probe">0000000000</span></div>
         </div>
       </div>
